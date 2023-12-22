@@ -1,30 +1,31 @@
-const fs = require("fs");
-const path = require("path");
+const User = require("../models/user.model");
 
-const users = JSON.parse(
-    fs.readFileSync(
-        path.join(__dirname, "..", "dev-data", "data", "users.json")
-    )
-);
+const getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find();
 
-const getAllUsers = (req, res) => {
-    res.status(200).json({
-        status: "success",
-        requestedAt: req.requestTime,
-        results: users.length,
-        data: {
-            users,
-        },
-    });
+        res.status(200).json({
+            status: "success",
+            results: users.length,
+            data: {
+                users,
+            },
+        });
+    } catch (err) {
+        res.status(404).json({
+            status: "failed",
+            message: err,
+        });
+    }
 };
 
-const getUser = (req, res) => {
-    const user = users.find((el) => el._id === req.params._id);
+const getUser = async (req, res) => {
+    const user = await User.findById(req.params.id);
     if (user) {
         res.status(200).json({
             status: "success",
             data: {
-                users: user,
+                user,
             },
         });
     } else {
@@ -35,51 +36,62 @@ const getUser = (req, res) => {
     }
 };
 
-const createUser = (req, res) => {
-    const newId = users[users.length - 1].id + 1;
-    const newUser = Object.assign({ id: newId }, req.body);
-    users.push(newUser);
-    fs.writeFile(
-        path.join(__dirname, "dev-data", "data", "users.json"),
-        JSON.stringify(users),
-        (err) => {
-            res.status(201).json({
-                status: "success",
-                data: {
-                    user: newUser,
-                },
-            });
-        }
-    );
-};
+const createUser = async (req, res) => {
+    try {
+        const newUser = await User.create(req.body);
 
-const updateUser = (req, res) => {
-    if (req.params.id * 1 > users.length) {
-        return res.status(404).json({
+        res.status(201).json({
+            status: "success",
+            data: {
+                user: newUser,
+            },
+        });
+    } catch (err) {
+        res.status(400).json({
             status: "failed",
-            message: "The User does not exist",
+            message: err,
         });
     }
-
-    res.status(201).json({
-        status: "success",
-        data: {
-            User: "<updated User here...>",
-        },
-    });
 };
 
-const deleteUser = (req, res) => {
-    if (JSON.stringify(req.params.id)) {
+const updateUser = async (req, res) => {
+    try {
+        const updatedUser = await User.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            {
+                new: true,
+                runValidators: true,
+            }
+        );
+
+        res.status(201).json({
+            status: "success",
+            data: {
+                user: updateUser,
+            },
+        });
+    } catch (err) {
         return res.status(404).json({
             status: "failed",
-            message: "The User does not exist",
+            message: err,
         });
     }
-    res.status(204).json({
-        status: "success",
-        data: null,
-    });
+};
+
+const deleteUser = async (req, res) => {
+    try {
+        const deletedUser = await User.findByIdAndDelete(req.params.id);
+        res.status(204).json({
+            status: "success",
+            data: null,
+        });
+    } catch (err) {
+        return res.status(404).json({
+            status: "failed",
+            data: err,
+        });
+    }
 };
 
 module.exports = { getAllUsers, getUser, createUser, updateUser, deleteUser };
